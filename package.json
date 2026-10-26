@@ -1,0 +1,24 @@
+{
+  "name": "admin-dashboard",
+  "private": true,
+  "version": "1.0.0",
+  "description": "SaaS admin dashboard: React + Recharts, Express, Prisma + SQLite",
+  "workspaces": [
+    "server",
+    "client"
+  ],
+  "scripts": {
+    "setup": "npm run db:setup -w server",
+    "dev": "concurrently -n api,web -c blue,magenta \"npm run dev -w server\" \"npm run dev -w client\"",
+    "build": "npm run build:demo-db -w server && npm run build -w client",
+    "test": "npm test -w server",
+    "typecheck": "npm run typecheck -w server && npm run typecheck -w client",
+    "seed": "npm run seed -w server"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
