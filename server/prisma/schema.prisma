@@ -1,0 +1,72 @@
+// Data model for the SaaS admin dashboard.
+//
+// Two groups of tables:
+//   * Staff accounts that log in to the dashboard (User).
+//   * The SaaS business data the dashboard reports on (Plan, Customer, Payment).
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider      = "prisma-client-js"
+  // "rhel-openssl-3.0.x" is the engine Netlify Functions (AWS Lambda) needs.
+  binaryTargets = ["native", "rhel-openssl-3.0.x"]
+}
+
+/// A dashboard user. role is "ADMIN" or "VIEWER" (SQLite has no enums; validated in code).
+model User {
+  id             String    @id @default(cuid())
+  email          String    @unique
+  name           String
+  passwordHash   String
+  role           String    @default("VIEWER")
+  active         Boolean   @default(true)
+  /// Bumped to invalidate every session cookie issued for this user.
+  sessionVersion Int       @default(0)
+  lastLoginAt    DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+}
+
+model Plan {
+  id           String     @id
+  name         String     @unique
+  priceCents   Int
+  sortOrder    Int
+  customers    Customer[]
+  payments     Payment[]
+}
+
+/// A sign-up to the SaaS product.
+model Customer {
+  id           String    @id @default(cuid())
+  company      String
+  email        String    @unique
+  region       String
+  planId       String
+  plan         Plan      @relation(fields: [planId], references: [id])
+  signedUpAt   DateTime
+  lastActiveAt DateTime
+  churnedAt    DateTime?
+  payments     Payment[]
+
+  @@index([signedUpAt])
+  @@index([lastActiveAt])
+  @@index([planId])
+}
+
+/// A paid invoice. planId is denormalised so revenue-by-plan reflects the plan at billing time.
+model Payment {
+  id          String   @id @default(cuid())
+  customerId  String
+  customer    Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  planId      String
+  plan        Plan     @relation(fields: [planId], references: [id])
+  amountCents Int
+  paidAt      DateTime
+
+  @@index([paidAt])
+  @@index([planId, paidAt])
+}
